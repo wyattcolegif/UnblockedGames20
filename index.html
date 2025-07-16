@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Unblocked Games Hub</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: #fff;
+      text-align: center;
+    }
+
+    header {
+      padding: 1em;
+      background: #111;
+    }
+
+    main {
+      padding: 2em;
+    }
+
+    button {
+      padding: 1em 2em;
+      margin: 1em;
+      font-size: 1em;
+      background: #444;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #666;
+    }
+
+    .game {
+      display: none;
+      margin-top: 2em;
+    }
+
+    canvas {
+      background: #fff;
+      border: 2px solid #000;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      gap: 5px;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #ccc;
+      font-size: 24px;
+      line-height: 80px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Unblocked Games Hub</h1>
+</header>
+
+<main>
+  <button onclick="showGame('flappy')">Play Flappy Bird</button>
+  <button onclick="showGame('snake')">Play Snake</button>
+  <button onclick="showGame('2048')">Play 2048</button>
+
+  <div id="flappy" class="game">
+    <canvas id="flappyCanvas" width="320" height="480"></canvas>
+  </div>
+
+  <div id="snake" class="game">
+    <canvas id="snakeCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div id="2048" class="game">
+    <div id="grid"></div>
+    <p>Use arrow keys to play!</p>
+  </div>
+</main>
+
+<script>
+// === Show/Hide Game Logic ===
+function showGame(gameId) {
+  document.querySelectorAll('.game').forEach(g => g.style.display = 'none');
+  document.getElementById(gameId).style.display = 'block';
+}
+
+// === Flappy Bird Game ===
+const fCanvas = document.getElementById("flappyCanvas");
+const fCtx = fCanvas.getContext("2d");
+let fFrames = 0;
+let fState = { current: 0, getReady: 0, game: 1, over: 2 };
+let bird = {
+  x: 50, y: 150, r: 12, g: 0.25, j: 4.6, s: 0, rot: 0,
+  draw() {
+    fCtx.save(); fCtx.translate(this.x, this.y); fCtx.rotate(this.rot);
+    fCtx.fillStyle = "yellow"; fCtx.beginPath(); fCtx.arc(0, 0, this.r, 0, Math.PI * 2); fCtx.fill();
+    fCtx.restore();
+  },
+  flap() { this.s = -this.j; },
+  update() {
+    if (fState.current === fState.getReady) { this.y = 150; this.rot = 0; }
+    else {
+      this.s += this.g; this.y += this.s;
+      this.rot = this.s >= this.j ? 90 * Math.PI/180 : -25 * Math.PI/180;
+      if (this.y + this.r >= fCanvas.height) fState.current = fState.over;
+    }
+  },
+  reset() { this.s = 0; this.y = 150; }
+};
+let pipes = {
+  pos: [], w: 50, h: 200, g: 85, dx: 2,
+  draw() {
+    fCtx.fillStyle = "#228B22";
+    this.pos.forEach(p => {
+      fCtx.fillRect(p.x, p.y, this.w, this.h);
+      fCtx.fillRect(p.x, p.y + this.h + this.g, this.w, this.h);
+    });
+  },
+  update() {
+    if (fState.current !== fState.game) return;
+    if (fFrames % 100 === 0) this.pos.push({ x: fCanvas.width, y: -Math.floor(Math.random() * 100 + 50) });
+    this.pos.forEach((p, i) => {
+      p.x -= this.dx;
+      if (bird.x + bird.r > p.x && bird.x - bird.r < p.x + this.w &&
+          (bird.y - bird.r < p.y + this.h || bird.y + bird.r > p.y + this.h + this.g)) {
+        fState.current = fState.over;
+      }
+      if (p.x + this.w < 0) this.pos.shift();
+    });
+  },
+  reset() { this.pos = []; }
+};
+fCanvas.addEventListener("click", () => {
+  if (fState.current === fState.getReady) fState.current = fState.game;
+  else if (fState.current === fState.game) bird.flap();
+  else { pipes.reset(); bird.reset(); fState.current = fState.getReady; }
+});
+function fDraw() {
+  fCtx.fillStyle = "#70c5ce"; fCtx.fillRect(0, 0, fCanvas.width, fCanvas.height);
+  pipes.draw(); bird.draw();
+  if (fState.current === fState.getReady) {
+    fCtx.fillStyle = "#000"; fCtx.font = "20px Arial";
+    fCtx.fillText("Click to Start", 90, 240);
+  }
+  if (fState.current === fState.over) {
+    fCtx.fillStyle = "#f00"; fCtx.font = "20px Arial";
+    fCtx.fillText("Game Over", 100, 240);
+  }
+}
+function fUpdate() { bird.update(); pipes.update(); }
+function fLoop() {
+  if (document.getElementById("flappy").style.display !== "none") {
+    fUpdate(); fDraw(); fFrames++;
+  }
+  requestAnimationFrame(fLoop);
+}
+fLoop();
+
+// === Snake Game ===
+const sCanvas = document.getElementById("snakeCanvas");
+const sCtx = sCanvas.getContext("2d");
+let snake = [{x: 160, y: 160}], food = {}, dx = 20, dy = 0;
+function randFood() {
+  food = { x: Math.floor(Math.random()*20)*20, y: Math.floor(Math.random()*20)*20 };
+}
+function sDraw() {
+  sCtx.fillStyle = "#000"; sCtx.fillRect(0, 0, 400, 400);
+  sCtx.fillStyle = "lime";
+  snake.forEach(p => sCtx.fillRect(p.x, p.y, 20, 20));
+  sCtx.fillStyle = "red"; sCtx.fillRect(food.x, food.y, 20, 20);
+}
+function sUpdate() {
+  const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+  if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || snake.some(p => p.x === head.x && p.y === head.y)) {
+    snake = [{x: 160, y: 160}]; dx = 20; dy = 0; randFood(); return;
+  }
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) randFood();
+  else snake.pop();
+}
+function sLoop() {
+  if (document.getElementById("snake").style.display !== "none") {
+    sUpdate(); sDraw();
+  }
+  setTimeout(sLoop, 100);
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -20; }
+  else if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 20; }
+  else if (e.key === "ArrowLeft" && dx === 0) { dx = -20; dy = 0; }
+  else if (e.key === "ArrowRight" && dx === 0) { dx = 20; dy = 0; }
+});
+randFood(); sLoop();
+
+// === 2048 Game ===
+const grid = document.getElementById("grid");
+let tiles = Array(16).fill(0);
+function draw2048() {
+  grid.innerHTML = "";
+  tiles.forEach(n => {
+    let cell = document.createElement("div");
+    cell.className = "cell";
+    cell.textContent = n ? n : "";
+    grid.appendChild(cell);
+  });
+}
+function combine(row) {
+  row = row.filter(x => x);
+  for (let i = 0; i < row.length-1; i++) {
+    if (row[i] === row[i+1]) { row[i] *= 2; row[i+1] = 0; }
+  }
+  return row.filter(x => x);
+}
+function move(dir) {
+  for (let i = 0; i < 4; i++) {
+    let row = [];
+    for (let j = 0; j < 4; j++) {
+      let idx = dir === "left" || dir === "right" ? i*4+j : j*4+i;
+      row.push(tiles[idx]);
+    }
+    if (dir === "right" || dir === "down") row.reverse();
+    row = combine(row);
+    while (row.length < 4) row.push(0);
+    if (dir === "right" || dir === "down") row.reverse();
+    for (let j = 0; j < 4; j++) {
+      let idx = dir === "left" || dir === "right" ? i*4+j : j*4+i;
+      tiles[idx] = row[j];
+    }
+  }
+  addTile(); draw2048();
+}
+function addTile() {
+  let empty = tiles.map((v, i) => v === 0 ? i : -1).filter(i => i !== -1);
+  if (empty.length) tiles[empty[Math.floor(Math.random()*empty.length)]] = 2;
+}
+document.addEventListener("keydown", e => {
+  if (document.getElementById("2048").style.display === "none") return;
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+    move(e.key.replace("Arrow","").toLowerCase());
+  }
+});
+tiles = Array(16).fill(0); addTile(); addTile(); draw2048();
+</script>
+
+</body>
+</html>
