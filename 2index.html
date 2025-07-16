@@ -206,4 +206,52 @@ randFood(); sLoop();
 // === 2048 Game ===
 const grid = document.getElementById("grid");
 let tiles = Array(16).fill(0);
-function draw204
+function draw2048() {
+  grid.innerHTML = "";
+  tiles.forEach(n => {
+    let cell = document.createElement("div");
+    cell.className = "cell";
+    cell.textContent = n ? n : "";
+    grid.appendChild(cell);
+  });
+}
+function combine(row) {
+  row = row.filter(x => x);
+  for (let i = 0; i < row.length-1; i++) {
+    if (row[i] === row[i+1]) { row[i] *= 2; row[i+1] = 0; }
+  }
+  return row.filter(x => x);
+}
+function move(dir) {
+  for (let i = 0; i < 4; i++) {
+    let row = [];
+    for (let j = 0; j < 4; j++) {
+      let idx = dir === "left" || dir === "right" ? i*4+j : j*4+i;
+      row.push(tiles[idx]);
+    }
+    if (dir === "right" || dir === "down") row.reverse();
+    row = combine(row);
+    while (row.length < 4) row.push(0);
+    if (dir === "right" || dir === "down") row.reverse();
+    for (let j = 0; j < 4; j++) {
+      let idx = dir === "left" || dir === "right" ? i*4+j : j*4+i;
+      tiles[idx] = row[j];
+    }
+  }
+  addTile(); draw2048();
+}
+function addTile() {
+  let empty = tiles.map((v, i) => v === 0 ? i : -1).filter(i => i !== -1);
+  if (empty.length) tiles[empty[Math.floor(Math.random()*empty.length)]] = 2;
+}
+document.addEventListener("keydown", e => {
+  if (document.getElementById("2048").style.display === "none") return;
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+    move(e.key.replace("Arrow","").toLowerCase());
+  }
+});
+tiles = Array(16).fill(0); addTile(); addTile(); draw2048();
+</script>
+
+</body>
+</html>
